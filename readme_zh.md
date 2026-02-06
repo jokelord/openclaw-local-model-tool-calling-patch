@@ -9,7 +9,7 @@ https://github.com/jokelord/local-model-tool-calling
 **验证环境**：
 - 模型：Qwen3-Coder-30B-A3B-Instruct-FP8
 - 推理服务器：sglang + `--tool-call-parser qwen3_coder`
-- Clawdbot 版本：2026.1.24-0
+- Clawdbot 版本：2026.2.3
 
 **验证结果**：✅ 成功调用工具
 

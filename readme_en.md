@@ -9,7 +9,7 @@ Enable Clawdbot to support tool calling functionality for local inference models
 **Tested Environment**:
 - Model: Qwen3-Coder-30B-A3B-Instruct-FP8
 - Inference Server: sglang + `--tool-call-parser qwen3_coder`
-- Clawdbot Version: 2026.1.24-0
+- Clawdbot Version: 2026.2.3
 
 **Test Results**: ✅ Successfully calls tools
 
