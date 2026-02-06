@@ -26,14 +26,18 @@ export function modelSupportsTools(model: Model<Api>): boolean {
   // Only openai-completions models can have compat settings
   if (!isOpenAiCompletionsModel(model)) {
     // Non-OpenAI API models (Anthropic, Google, etc.) always support tools
-    if (debugLog) console.error(`[modelSupportsTools] Not OpenAI API, returning true`);
+    if (debugLog) {
+      console.error(`[modelSupportsTools] Not OpenAI API, returning true`);
+    }
     return true;
   }
 
   const compat = model.compat;
   if (!compat) {
     // No compat config = assume tools supported (cloud provider default)
-    if (debugLog) console.error(`[modelSupportsTools] No compat, returning true`);
+    if (debugLog) {
+      console.error(`[modelSupportsTools] No compat, returning true`);
+    }
     return true;
   }
 
@@ -42,31 +46,40 @@ export function modelSupportsTools(model: Model<Api>): boolean {
   const supportedParams = (compat as Record<string, unknown>).supportedParameters as
     | string[]
     | undefined;
-  if (debugLog) console.error(`[modelSupportsTools] supportedParams=${JSON.stringify(supportedParams)}`);
+  if (debugLog) {
+    console.error(`[modelSupportsTools] supportedParams=${JSON.stringify(supportedParams)}`);
+  }
 
   if (supportedParams === undefined || supportedParams === null) {
     // supportedParameters not declared = assume tools supported (cloud provider default)
-    if (debugLog) console.error(`[modelSupportsTools] supportedParams undefined/null, returning true`);
+    if (debugLog) {
+      console.error(`[modelSupportsTools] supportedParams undefined/null, returning true`);
+    }
     return true;
   }
 
   // If supportedParameters is explicitly set, check if "tools" is included
   const result = Array.isArray(supportedParams) && supportedParams.includes("tools");
-  if (debugLog) console.error(`[modelSupportsTools] Final result: ${result}`);
+  if (debugLog) {
+    console.error(`[modelSupportsTools] Final result: ${result}`);
+  }
   return result;
 }
 
 export function normalizeModelCompat(model: Model<Api>): Model<Api> {
   const baseUrl = model.baseUrl ?? "";
   const isZai = model.provider === "zai" || baseUrl.includes("api.z.ai");
-  if (!isZai || !isOpenAiCompletionsModel(model)) return model;
+  if (!isZai || !isOpenAiCompletionsModel(model)) {
+    return model;
+  }
 
-  const openaiModel = model as Model<"openai-completions">;
-  const compat = openaiModel.compat ?? undefined;
-  if (compat?.supportsDeveloperRole === false) return model;
+  const compat = model.compat ?? undefined;
+  if (compat?.supportsDeveloperRole === false) {
+    return model;
+  }
 
-  openaiModel.compat = compat
-    ? { ...compat, supportsDeveloperRole: false }
-    : { supportsDeveloperRole: false };
-  return openaiModel;
+  return {
+    ...model,
+    compat: compat ? { ...compat, supportsDeveloperRole: false } : { supportsDeveloperRole: false },
+  };
 }
