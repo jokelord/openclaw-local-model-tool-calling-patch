@@ -29,10 +29,10 @@ export const ModelCompatSchema = z
 export const ModelDefinitionSchema = z
   .object({
     id: z.string().min(1),
-    name: z.string().min(1),
+    name: z.string().min(1).optional(),
     api: ModelApiSchema.optional(),
-    reasoning: z.boolean(),
-    input: z.array(z.union([z.literal("text"), z.literal("image")])),
+    reasoning: z.boolean().optional(),
+    input: z.array(z.union([z.literal("text"), z.literal("image")])).optional(),
     cost: z
       .object({
         input: z.number(),
@@ -40,9 +40,10 @@ export const ModelDefinitionSchema = z
         cacheRead: z.number(),
         cacheWrite: z.number(),
       })
-      .strict(),
-    contextWindow: z.number().positive(),
-    maxTokens: z.number().positive(),
+      .strict()
+      .optional(),
+    contextWindow: z.number().positive().optional(),
+    maxTokens: z.number().positive().optional(),
     headers: z.record(z.string(), z.string()).optional(),
     compat: ModelCompatSchema,
   })
@@ -158,10 +159,12 @@ export const MarkdownConfigSchema = z
   .strict()
   .optional();
 
-export const TtsProviderSchema = z.enum(["elevenlabs", "openai"]);
+export const TtsProviderSchema = z.enum(["elevenlabs", "openai", "edge"]);
 export const TtsModeSchema = z.enum(["final", "all"]);
+export const TtsAutoSchema = z.enum(["off", "always", "inbound", "tagged"]);
 export const TtsConfigSchema = z
   .object({
+    auto: TtsAutoSchema.optional(),
     enabled: z.boolean().optional(),
     mode: TtsModeSchema.optional(),
     provider: TtsProviderSchema.optional(),

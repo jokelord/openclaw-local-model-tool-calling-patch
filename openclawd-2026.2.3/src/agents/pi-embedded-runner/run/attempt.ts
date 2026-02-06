@@ -133,11 +133,6 @@ export function injectHistoryImagesIntoMessages(
 export async function runEmbeddedAttempt(
   params: EmbeddedRunAttemptParams,
 ): Promise<EmbeddedRunAttemptResult> {
-  // Debug: Write to file at very start of function
-  if (process.env.CLAWDBOT_DEBUG_TOOLS === "1") {
-    await fs.appendFile("/tmp/clawdbot-debug.log", `[attempt.ts] runEmbeddedAttempt ENTERED\n`);
-  }
-
   const resolvedWorkspace = resolveUserPath(params.workspaceDir);
   const prevCwd = process.cwd();
   const runAbortController = new AbortController();
@@ -205,30 +200,10 @@ export async function runEmbeddedAttempt(
     // Check if the model supports native image input
     const modelHasVision = params.model.input?.includes("image") ?? false;
 
-    // Debug: Write to file for reliable debugging
-    if (process.env.CLAWDBOT_DEBUG_TOOLS === "1") {
-      const debugInfo = [
-        `[attempt.ts] Checking tool support for model:`,
-        `[attempt.ts] params.modelId=${params.modelId}`,
-        `[attempt.ts] params.model.id=${params.model?.id}`,
-        `[attempt.ts] params.model.api=${params.model?.api}`,
-        `[attempt.ts] params.model.compat=${JSON.stringify(params.model?.compat)}`,
-      ].join("\n") + "\n";
-      fs.appendFile("/tmp/clawdbot-debug.log", debugInfo);
-    }
-
     // Check if model supports tools via compat.supportedParameters
     // If not declared (undefined), assume tools are supported (backward compat with cloud providers)
     // If explicitly declared, check if "tools" is in the array
     const modelHasToolSupport = modelSupportsTools(params.model);
-
-    if (process.env.CLAWDBOT_DEBUG_TOOLS === "1") {
-      const debugInfo2 = [
-        `[attempt.ts] modelHasToolSupport=${modelHasToolSupport}`,
-        `[attempt.ts] params.disableTools=${params.disableTools}`,
-      ].join("\n") + "\n";
-      fs.appendFile("/tmp/clawdbot-debug.log", debugInfo2);
-    }
 
     if (!modelHasToolSupport) {
       log.debug(
@@ -268,12 +243,6 @@ export async function runEmbeddedAttempt(
             modelHasVision,
           });
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
-
-    // Debug: Log tools count
-    if (process.env.CLAWDBOT_DEBUG_TOOLS === "1") {
-      const toolNames = tools.map((t: { name?: string }) => t.name || "unknown").join(", ");
-      fs.appendFile("/tmp/clawdbot-debug.log", `[attempt.ts] tools count=${tools.length}, names=${toolNames}\n`);
-    }
 
     logToolSchemasForGoogle({ tools, provider: params.provider });
 
@@ -467,14 +436,6 @@ export async function runEmbeddedAttempt(
         sandboxEnabled: !!sandbox?.enabled,
       });
 
-      // Debug: Log builtInTools and customTools count
-      if (process.env.CLAWDBOT_DEBUG_TOOLS === "1") {
-        fs.appendFile(
-          "/tmp/clawdbot-debug.log",
-          `[attempt.ts] builtInTools count=${builtInTools.length}, customTools count=${customTools.length}\n`,
-        );
-      }
-
       // Add client tools (OpenResponses hosted tools) to customTools
       let clientToolCallDetected: { name: string; params: Record<string, unknown> } | null = null;
       const clientToolDefs = params.clientTools
@@ -484,14 +445,6 @@ export async function runEmbeddedAttempt(
         : [];
 
       const allCustomTools = [...customTools, ...clientToolDefs];
-
-      // Debug: Log what we're passing to createAgentSession
-      if (process.env.CLAWDBOT_DEBUG_TOOLS === "1") {
-        fs.appendFile(
-          "/tmp/clawdbot-debug.log",
-          `[attempt.ts] Calling createAgentSession with tools=${builtInTools.length}, customTools=${allCustomTools.length}\n`,
-        );
-      }
 
       ({ session } = await createAgentSession({
         cwd: resolvedWorkspace,
@@ -513,20 +466,6 @@ export async function runEmbeddedAttempt(
         throw new Error("Embedded agent session missing");
       }
       const activeSession = session;
-
-      // Debug: Log tools in session after creation
-      if (process.env.CLAWDBOT_DEBUG_TOOLS === "1") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sessionTools = (activeSession.agent as any)?.state?.tools ?? [];
-        const toolNames = Array.isArray(sessionTools)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ? sessionTools.map((t: any) => t.name || "unknown").join(", ")
-          : "N/A";
-        fs.appendFile(
-          "/tmp/clawdbot-debug.log",
-          `[attempt.ts] After createAgentSession: agent.state.tools count=${Array.isArray(sessionTools) ? sessionTools.length : 0}, names=${toolNames}\n`,
-        );
-      }
 
       const cacheTrace = createCacheTrace({
         cfg: params.config,

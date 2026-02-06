@@ -1,10 +1,10 @@
 {
   "meta": {
     "lastTouchedVersion": "2026.1.24-0",
-    "lastTouchedAt": "2026-02-02T02:34:34.517Z"
+    "lastTouchedAt": "2026-02-04T14:03:38.508Z"
   },
   "wizard": {
-    "lastRunAt": "2026-02-02T02:34:34.509Z",
+    "lastRunAt": "2026-02-04T14:03:38.501Z",
     "lastRunVersion": "2026.1.24-0",
     "lastRunCommand": "onboard",
     "lastRunMode": "local"
@@ -20,7 +20,7 @@
   "models": {
     "providers": {
       "sglang-local": {
-        "baseUrl": "http://0.0.0.0:30000/v1",
+        "baseUrl": "http://127.0.0.1:30000/v1",
         "apiKey": "EMPTY",
         "api": "openai-completions",
         "models": [
@@ -88,11 +88,11 @@
           "params": {}
         }
       },
-      "workspace": "/home/username/clawd",
+      "workspace": "/home/zk/clawd",
       "timeFormat": "24",
       "heartbeat": {
         "model": "sglang-local/Qwen3-Coder-30B-A3B-Instruct-FP8",
-        "prompt": "to be someone useful",
+        "prompt": "to be someone helpful",
         "ackMaxChars": 40
       },
       "maxConcurrent": 4,
@@ -107,8 +107,15 @@
       "read",
       "exec",
       "write",
-      "edit"
+      "edit",
+      "web_search"
     ],
+    "web": {
+      "search": {
+        "enabled": true,
+        "provider": "duckduckgo"
+      }
+    },
     "exec": {
       "host": "gateway",
       "security": "full",
@@ -138,13 +145,17 @@
       }
     }
   },
+  "web": {
+    "enabled": false
+  },
+
   "gateway": {
     "port": 18789,
     "mode": "local",
     "bind": "loopback",
     "auth": {
       "mode": "token",
-      "token": "your-gateway-token"
+      "token": "your-token"
     },
     "tailscale": {
       "mode": "off",
