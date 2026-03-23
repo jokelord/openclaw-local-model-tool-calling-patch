@@ -177,6 +177,7 @@ export const ToolsWebSearchSchema = z
         z.literal("perplexity"),
         z.literal("duckduckgo"),
         z.literal("ddg"),
+        z.literal("tavily"),
       ])
       .optional(),
     apiKey: z.string().optional(),
@@ -188,6 +189,14 @@ export const ToolsWebSearchSchema = z
         apiKey: z.string().optional(),
         baseUrl: z.string().optional(),
         model: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    tavily: z
+      .object({
+        apiKey: z.string().optional(),
+        maxResults: z.number().int().positive().optional(),
+        includeRawContent: z.boolean().optional(),
       })
       .strict()
       .optional(),
