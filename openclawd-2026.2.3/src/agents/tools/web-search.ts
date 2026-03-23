@@ -18,12 +18,13 @@ import {
   writeCache,
 } from "./web-shared.js";
 
-const SEARCH_PROVIDERS = ["brave", "perplexity", "duckduckgo"] as const;
+const SEARCH_PROVIDERS = ["brave", "perplexity", "duckduckgo", "tavily"] as const;
 const DEFAULT_SEARCH_COUNT = 5;
 const MAX_SEARCH_COUNT = 10;
 
 const BRAVE_SEARCH_ENDPOINT = "https://api.search.brave.com/res/v1/web/search";
 const DUCKDUCKGO_HTML_ENDPOINT = "https://html.duckduckgo.com/html/";
+const TAVILY_SEARCH_ENDPOINT = "https://api.tavily.com/search";
 const DEFAULT_PERPLEXITY_BASE_URL = "https://openrouter.ai/api/v1";
 const PERPLEXITY_DIRECT_BASE_URL = "https://api.perplexity.ai";
 const DEFAULT_PERPLEXITY_MODEL = "perplexity/sonar-pro";
@@ -174,6 +175,14 @@ function missingSearchKeyPayload(provider: (typeof SEARCH_PROVIDERS)[number]) {
       docs: "https://docs.openclaw.ai/tools/web",
     };
   }
+  if (provider === "tavily") {
+    return {
+      error: "missing_tavily_api_key",
+      message:
+        "web_search (tavily) needs an API key. Set TAVILY_API_KEY in the Gateway environment, or configure tools.web.search.tavily.apiKey.",
+      docs: "https://docs.openclaw.ai/tools/web",
+    };
+  }
   return {
     error: "missing_brave_api_key",
     message: `web_search needs a Brave Search API key. Run \`${formatCliCommand("openclaw configure --section web")}\` to store it, or set BRAVE_API_KEY in the Gateway environment.`,
@@ -191,6 +200,9 @@ function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDE
   }
   if (raw === "duckduckgo" || raw === "ddg") {
     return "duckduckgo";
+  }
+  if (raw === "tavily") {
+    return "tavily";
   }
   if (raw === "brave") {
     return "brave";
@@ -453,6 +465,62 @@ async function runDuckDuckGoSearch(params: {
   }
 }
 
+type TavilySearchResult = {
+  title?: string;
+  url?: string;
+  content?: string;
+};
+
+type TavilySearchResponse = {
+  results?: TavilySearchResult[];
+};
+
+function resolveTavilyApiKey(search?: WebSearchConfig): string | undefined {
+  const fromConfig =
+    search && "tavily" in search && typeof search.tavily === "object" && search.tavily
+      ? typeof (search.tavily as Record<string, unknown>).apiKey === "string"
+        ? ((search.tavily as Record<string, unknown>).apiKey as string).trim()
+        : ""
+      : "";
+  const fromEnv = (process.env.TAVILY_API_KEY ?? "").trim();
+  return fromConfig || fromEnv || undefined;
+}
+
+async function runTavilySearch(params: {
+  query: string;
+  count: number;
+  apiKey: string;
+  timeoutSeconds: number;
+}): Promise<Array<{ title: string; url: string; description: string; siteName?: string }>> {
+  const res = await proxyFetch(TAVILY_SEARCH_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      api_key: params.apiKey,
+      query: params.query,
+      max_results: params.count,
+      search_depth: "basic",
+    }),
+    signal: withTimeout(undefined, params.timeoutSeconds * 1000),
+  });
+
+  if (!res.ok) {
+    const detail = await readResponseText(res);
+    throw new Error(`Tavily Search API error (${res.status}): ${detail || res.statusText}`);
+  }
+
+  const data = (await res.json()) as TavilySearchResponse;
+  const results = Array.isArray(data.results) ? data.results : [];
+  return results.map((entry) => ({
+    title: entry.title ?? "",
+    url: entry.url ?? "",
+    description: entry.content ?? "",
+    siteName: resolveSiteName(entry.url),
+  }));
+}
+
 async function runPerplexitySearch(params: {
   query: string;
   apiKey?: string;
@@ -558,6 +626,24 @@ async function runWebSearch(params: {
     return payload;
   }
 
+  if (params.provider === "tavily") {
+    const tavilyResults = await runTavilySearch({
+      query: params.query,
+      count: params.count,
+      apiKey: params.apiKey!,
+      timeoutSeconds: params.timeoutSeconds,
+    });
+    const payload = {
+      query: params.query,
+      provider: params.provider,
+      count: tavilyResults.length,
+      tookMs: Date.now() - start,
+      results: tavilyResults,
+    };
+    writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+    return payload;
+  }
+
   if (params.provider !== "brave") {
     throw new Error("Unsupported web search provider.");
   }
@@ -634,7 +720,9 @@ export function createWebSearchTool(options?: {
   const description =
     provider === "perplexity"
       ? "Search the web using Perplexity Sonar (direct or via OpenRouter). Returns AI-synthesized answers with citations from real-time web search."
-      : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
+      : provider === "tavily"
+        ? "Search the web using Tavily Search API. Returns titles, URLs, and content snippets optimized for LLM consumption."
+        : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
 
   return {
     label: "Web Search",
@@ -645,7 +733,11 @@ export function createWebSearchTool(options?: {
       const perplexityAuth =
         provider === "perplexity" ? resolvePerplexityApiKey(perplexityConfig) : undefined;
       const apiKey =
-        provider === "perplexity" ? perplexityAuth?.apiKey : resolveSearchApiKey(search);
+        provider === "perplexity"
+          ? perplexityAuth?.apiKey
+          : provider === "tavily"
+            ? resolveTavilyApiKey(search)
+            : resolveSearchApiKey(search);
 
       if (!apiKey && provider !== "duckduckgo") {
         return jsonResult(missingSearchKeyPayload(provider));

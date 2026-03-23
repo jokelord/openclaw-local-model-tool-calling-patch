@@ -336,8 +336,8 @@ export type ToolsConfig = {
     search?: {
       /** Enable web search tool (default: true when API key is present). */
       enabled?: boolean;
-      /** Search provider ("brave", "perplexity", or "duckduckgo"). DuckDuckGo is free and requires no API key. */
-      provider?: "brave" | "perplexity" | "duckduckgo" | "ddg";
+      /** Search provider ("brave", "perplexity", "duckduckgo", or "tavily"). DuckDuckGo is free and requires no API key. */
+      provider?: "brave" | "perplexity" | "duckduckgo" | "ddg" | "tavily";
       /** Brave Search API key (optional; defaults to BRAVE_API_KEY env var). */
       apiKey?: string;
       /** Default search results count (1-10). */
@@ -346,6 +346,15 @@ export type ToolsConfig = {
       timeoutSeconds?: number;
       /** Cache TTL in minutes for search results. */
       cacheTtlMinutes?: number;
+      /** Tavily-specific configuration (used when provider="tavily"). */
+      tavily?: {
+        /** API key for Tavily (defaults to TAVILY_API_KEY env var). */
+        apiKey?: string;
+        /** Max number of results (default: 5). */
+        maxResults?: number;
+        /** Include raw content in results. */
+        includeRawContent?: boolean;
+      };
       /** Perplexity-specific configuration (used when provider="perplexity"). */
       perplexity?: {
         /** API key for Perplexity or OpenRouter (defaults to PERPLEXITY_API_KEY or OPENROUTER_API_KEY env var). */
