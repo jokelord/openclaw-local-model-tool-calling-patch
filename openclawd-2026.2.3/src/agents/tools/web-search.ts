@@ -475,13 +475,25 @@ type TavilySearchResponse = {
   results?: TavilySearchResult[];
 };
 
+type TavilyConfig = {
+  apiKey?: string;
+  maxResults?: number;
+  includeRawContent?: boolean;
+};
+
+function resolveTavilyConfig(search?: WebSearchConfig): TavilyConfig {
+  if (!search || typeof search !== "object") {
+    return {};
+  }
+  const tavily = "tavily" in search ? search.tavily : undefined;
+  if (!tavily || typeof tavily !== "object") {
+    return {};
+  }
+  return tavily as TavilyConfig;
+}
+
 function resolveTavilyApiKey(search?: WebSearchConfig): string | undefined {
-  const fromConfig =
-    search && "tavily" in search && typeof search.tavily === "object" && search.tavily
-      ? typeof (search.tavily as Record<string, unknown>).apiKey === "string"
-        ? ((search.tavily as Record<string, unknown>).apiKey as string).trim()
-        : ""
-      : "";
+  const fromConfig = normalizeApiKey(resolveTavilyConfig(search).apiKey);
   const fromEnv = (process.env.TAVILY_API_KEY ?? "").trim();
   return fromConfig || fromEnv || undefined;
 }
@@ -491,18 +503,24 @@ async function runTavilySearch(params: {
   count: number;
   apiKey: string;
   timeoutSeconds: number;
+  includeRawContent?: boolean;
 }): Promise<Array<{ title: string; url: string; description: string; siteName?: string }>> {
+  const body: Record<string, unknown> = {
+    query: params.query,
+    max_results: params.count,
+    search_depth: "basic",
+  };
+  if (params.includeRawContent) {
+    body.include_raw_content = true;
+  }
+
   const res = await proxyFetch(TAVILY_SEARCH_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${params.apiKey}`,
     },
-    body: JSON.stringify({
-      api_key: params.apiKey,
-      query: params.query,
-      max_results: params.count,
-      search_depth: "basic",
-    }),
+    body: JSON.stringify(body),
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
   });
 
@@ -514,9 +532,9 @@ async function runTavilySearch(params: {
   const data = (await res.json()) as TavilySearchResponse;
   const results = Array.isArray(data.results) ? data.results : [];
   return results.map((entry) => ({
-    title: entry.title ?? "",
+    title: entry.title ? wrapWebContent(entry.title, "web_search") : "",
     url: entry.url ?? "",
-    description: entry.content ?? "",
+    description: entry.content ? wrapWebContent(entry.content, "web_search") : "",
     siteName: resolveSiteName(entry.url),
   }));
 }
@@ -575,6 +593,7 @@ async function runWebSearch(params: {
   freshness?: string;
   perplexityBaseUrl?: string;
   perplexityModel?: string;
+  tavilyIncludeRawContent?: boolean;
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
     params.provider === "brave"
@@ -632,6 +651,7 @@ async function runWebSearch(params: {
       count: params.count,
       apiKey: params.apiKey!,
       timeoutSeconds: params.timeoutSeconds,
+      includeRawContent: params.tavilyIncludeRawContent,
     });
     const payload = {
       query: params.query,
@@ -716,6 +736,7 @@ export function createWebSearchTool(options?: {
 
   const provider = resolveSearchProvider(search);
   const perplexityConfig = resolvePerplexityConfig(search);
+  const tavilyConfig = resolveTavilyConfig(search);
 
   const description =
     provider === "perplexity"
@@ -745,7 +766,10 @@ export function createWebSearchTool(options?: {
       const params = args as Record<string, unknown>;
       const query = readStringParam(params, "query", { required: true });
       const count =
-        readNumberParam(params, "count", { integer: true }) ?? search?.maxResults ?? undefined;
+        readNumberParam(params, "count", { integer: true }) ??
+        (provider === "tavily" ? tavilyConfig.maxResults : undefined) ??
+        search?.maxResults ??
+        undefined;
       const country = readStringParam(params, "country");
       const search_lang = readStringParam(params, "search_lang");
       const ui_lang = readStringParam(params, "ui_lang");
@@ -783,6 +807,7 @@ export function createWebSearchTool(options?: {
           perplexityAuth?.apiKey,
         ),
         perplexityModel: resolvePerplexityModel(perplexityConfig),
+        tavilyIncludeRawContent: tavilyConfig.includeRawContent,
       });
       return jsonResult(result);
     },
