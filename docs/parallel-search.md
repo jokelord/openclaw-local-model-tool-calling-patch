@@ -80,6 +80,8 @@ outside this walkthrough.
 - If discovery fails, check connectivity to `https://search.parallel.ai/mcp`.
   Run the commands in the directory containing `parallel-search.json`, or pass
   its absolute path with `--config`.
+- If your network requires an HTTP proxy, set `HTTP_PROXY` or `HTTPS_PROXY` in
+  the shell running MCPorter and set `NODE_USE_ENV_PROXY=1` so Node.js uses it.
 - A successful connection is not a successful search. Inspect tool output for
   errors, including rate limits; if limited, wait for the indicated retry time.
 - To stop using this workflow, remove the new `parallel-search.json` file.
