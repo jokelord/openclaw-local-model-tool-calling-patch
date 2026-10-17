@@ -2,6 +2,8 @@
 clawdbot fork: 
 https://github.com/jokelord/local-model-tool-calling
 
+可选：[通过 Parallel Search MCP 搜索和提取最新文档](docs/parallel-search.md)（英文指南，使用 MCPorter 命令行，无需 API 密钥）。
+
 ## 🎯 补丁目标
 
 让 Clawdbot 支持本地推理模型（sglang/vLLM）的 tool calling 功能。
