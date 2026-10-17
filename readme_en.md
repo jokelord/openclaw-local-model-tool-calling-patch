@@ -2,6 +2,8 @@
 clawdbot fork: 
 https://github.com/jokelord/local-model-tool-calling
 
+Optional: [Search and fetch current documentation with Parallel Search MCP](docs/parallel-search.md) (MCPorter terminal workflow; no API key).
+
 ## 🎯 Patch Objective
 
 Enable Clawdbot to support tool calling functionality for local inference models (sglang/vLLM).
